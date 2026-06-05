@@ -1,0 +1,191 @@
+package main;
+
+enum Base {
+  dec = 10,
+  hex = 16,
+  bin = 2,
+  oct = 8,
+  asc = 1,
+  ERROR = 0
+}
+
+struct Number {
+  base: Base;
+  num: u64;
+}
+
+fn red() {
+  print("\x1b[31m");
+}
+
+fn reset() {
+  print("\x1b[0m");
+}
+
+fn get_base(s: String) -> Base {
+  if (s.length() <= 0) {
+    red();
+    println("[error]: Empty input is not allowed. How did you even manage to do that?");
+    reset();
+    return Base.ERROR;
+  }
+  if (s[0] == '-') {
+    red();
+    println("[error]: Unary minus is not allowed in \"%\"", s);
+    reset();
+    return Base.ERROR;
+  }
+  if (s.length() == 1) return Base.asc;
+  if (s[0] == '0') {
+    match (s[1]) {
+      'x' => return Base.hex;
+      'b' => return Base.bin;
+      'o' => return Base.oct;
+      '0' => {
+         red();
+         println("[error]: Leading zeroes not allowed in \"%\"", s);
+         reset();
+         return Base.ERROR;
+      }
+      _  => {
+         red();
+         println("[error]: Unknown base '%' in \"%\"", s[1], s);
+         reset();
+         return Base.ERROR;
+       }
+    }
+  }
+  return Base.dec;
+}
+
+
+fn parse_u64_base_n(s: String, base: Base, endptr: char** = null) -> u64 {
+  fn digit_value(c: char) -> i32 {
+    if (c >= '0' && c <= '9') {
+      return (c - '0') as i32;
+    }
+
+    if (c >= 'a' && c <= 'f') {
+      return ((c - 'a') as i32) + 10;
+    }
+
+    if (c >= 'A' && c <= 'F') {
+      return ((c - 'A') as i32) + 10;
+    }
+
+    return -1;
+  }
+  mut value: u64 = 0;
+
+  mut i: usize = 2;
+
+  if (base == Base.dec) i = 0;
+
+  for (i < s.length()) {
+    const d: i32 = digit_value(s[i]);
+
+    if (d < 0 || d >= (base as i32)) {
+      if (endptr != null) {
+        *endptr = &s[i];
+      }
+      break;
+    }
+
+    value = value * (base as u64) + (d as u64);
+    i = i + 1;
+  }
+
+  return value;
+}
+
+fn print_bases(number: Number, original: String) {
+  match number.base {
+    Base.dec => {
+      print("    dec:  %\n", original);
+      print("    hex:  %\n", hex_upper(number.num));
+      print("    bin:  %\n", bin(number.num));
+      print("    oct:  %\n", oct(number.num));
+      if (number.num <= 126 && number.num >= 33) {
+        print("    asc:  '%'\n", number.num as char);
+      }
+      return;
+    }
+
+    Base.hex => {
+      print("    dec:  %\n", number.num);
+      print("    hex:  %\n", original);
+      print("    bin:  %\n", bin(number.num));
+      print("    oct:  %\n", oct(number.num));
+      if (number.num <= 126 && number.num >= 33) {
+        print("    asc:  '%'\n", number.num as char);
+      }
+      return;
+    }
+
+    Base.bin => {
+      print("    dec:  %\n", number.num);
+      print("    hex:  %\n", hex_upper(number.num));
+      print("    bin:  %\n", original);
+      print("    oct:  %\n", oct(number.num));
+      if (number.num <= 126 && number.num >= 33) {
+        print("    asc:  '%'\n", number.num as char);
+      }
+      return;
+    }
+
+    Base.oct => {
+      print("    dec:  %\n", number.num);
+      print("    hex:  %\n", hex_upper(number.num));
+      print("    bin:  %\n", bin(number.num));
+      print("    oct:  %\n", original);
+      if (number.num <= 126 && number.num >= 33) {
+        print("    asc:  '%'\n", number.num as char);
+      }
+      return;
+    }
+
+    Base.asc => {
+      print("    dec:  %\n",   original[0] as i8);
+      print("    hex:  %\n",   hex_upper(original[0] as i8));
+      print("    bin:  %\n",   bin(original[0] as i8));
+      print("    oct:  %\n",   oct(original[0] as i8));
+      print("    asc:  '%'\n", original[0]);
+      return;
+    }
+
+    _ => {
+      red();
+      print("[error]: Unexpected error.\n");
+      reset();
+    }
+  }
+}
+
+fn main(args: String[]) {
+
+    if (args.length() < 2) {
+        println("Interactive mode is implemented but poorly (evidently).");
+	}
+
+  mut num: Number;
+  mut endptr: char*;
+  for (mut i: i32 = 1; i < args.length(); i += 1) {
+    if (args.length() > 2) println("%:", i);
+    mut s: String = args[i];
+    num.base = get_base(s);
+    if (num.base == Base.ERROR) continue;
+    if (num.base == Base.asc) {
+      print_bases(num, s);
+      continue;
+    }
+    endptr = null;
+    num.num = parse_u64_base_n(s, num.base, &endptr);
+    if (endptr != null) {
+      red();
+      println("[error]: invalid byte/bytes \"%\" in \"%\"", endptr, s);
+      reset();
+      continue;
+    }
+    print_bases(num, s);
+  }
+}

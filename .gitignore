@@ -1,0 +1,6 @@
+build/
+.forge/
+out
+*.asm
+*.o
+*.rt.o
